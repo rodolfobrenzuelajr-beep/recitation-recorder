@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recitation Recorder</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--ink:#1f2433;--mute:#667;--acc:#3b5bdb;--line:#dde1ec;--s1:#f8c9c4;--s2:#fbe3b0;--s3:#cfe8c0;--s4:#9fd6a8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161f;--card:#1e212d;--ink:#eceef6;--mute:#9aa0b5;--acc:#8ea2ff;--line:#33374a;--s1:#6b2f2b;--s2:#6b5420;--s3:#35582a;--s4:#1f6b3a}}
+:root[data-theme="dark"]{--bg:#14161f;--card:#1e212d;--ink:#eceef6;--mute:#9aa0b5;--acc:#8ea2ff;--line:#33374a;--s1:#6b2f2b;--s2:#6b5420;--s3:#35582a;--s4:#1f6b3a}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px 14px 48px}
+h1{font-size:1.4rem;margin:.2em 0}h3{margin:.2em 0 .6em}
+.sub{color:var(--mute);margin:0 0 12px}
+.tabs{display:flex;gap:6px;margin:12px 0}.tabs button{flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+button,select,input,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+button{cursor:pointer;font-weight:600}button.on,button.go{background:var(--acc);color:#fff;border-color:var(--acc)}
+textarea,input,select{width:100%;margin:4px 0}
+.big{font-size:1.8rem;font-weight:700;text-align:center;padding:14px;border:2px dashed var(--acc);border-radius:12px;margin:10px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+.sc{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.sc button.sel{outline:3px solid var(--acc)}
+.t1{background:var(--s1)}.t2{background:var(--s2)}.t3{background:var(--s3)}.t4{background:var(--s4)}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:center;white-space:nowrap}th:first-child,td:first-child{text-align:left}
+.mute{color:var(--mute);font-size:.9rem}
+</style></head><body><main>
+<h1>🎤 Recitation Recorder</h1>
+<p class="sub">Call on students fairly, score each recitation, and see who needs help. Data stays in this browser.</p>
+<div class="tabs"><button id="t0" onclick="tab(0)">Recite</button><button id="t1" onclick="tab(1)">Progress</button><button id="t2" onclick="tab(2)">Roster</button></div>
+<div id="v"></div></main>
+<script>
+const CON=["Variables","Conditionals","Loops","Functions","Lists","Combined"];
+const LAB=["Needs help","Developing","Good","Excellent"];
+let D={students:[],logs:[]};
+try{const r=localStorage.getItem("recit");if(r)D=JSON.parse(r)}catch(e){}
+const save=()=>{try{localStorage.setItem("recit",JSON.stringify(D))}catch(e){}};
+let cur=null,score=0,T=0;
+const $=id=>document.getElementById(id),esc=x=>String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function tab(n){T=n;[0,1,2].forEach(i=>$("t"+i).className=i==n?"on":"");[recite,progress,roster][n]()}
+function roster(){$("v").innerHTML='<div class="card"><h3>Class roster</h3><p class="mute">One name per line.</p><textarea id="ro" rows="8">'+esc(D.students.join("\n"))+'</textarea><button class="go" onclick="saveRo()">Save roster</button> <span id="ok" class="mute"></span></div><div class="card"><h3>Back up</h3><p class="mute">Copy your records to keep them safe (CSV).</p><textarea id="csv" rows="5" readonly onclick="this.select()">'+esc(csv())+'</textarea></div>'}
+function saveRo(){D.students=$("ro").value.split("\n").map(s=>s.trim()).filter(Boolean);save();$("ok").textContent="Saved ✓ ("+D.students.length+" students)"}
+function csv(){return "date,student,topic,score,note\n"+D.logs.map(l=>[l.d,l.s,l.c,l.n,'"'+(l.m||"").replace(/"/g,'""')+'"'].join(",")).join("\n")}
+function cnt(s){return D.logs.filter(l=>l.s==s).length}
+function pickStudent(){if(!D.students.length)return;const min=Math.min(...D.students.map(cnt));const pool=D.students.filter(s=>cnt(s)==min&&s!=cur);const p=pool.length?pool:D.students;cur=p[Math.floor(Math.random()*p.length)];score=0;recite()}
+function recite(){
+if(!D.students.length){$("v").innerHTML='<div class="card">Add your students in the <b>Roster</b> tab first.</div>';return}
+$("v").innerHTML='<div class="card"><h3>Who’s next?</h3><button class="go" style="width:100%" onclick="pickStudent()">🎲 Pick a student (fair rotation)</button><p class="mute">Students with the fewest recitations are picked first, so nobody is missed.</p><div class="big">'+(cur?esc(cur):"—")+'</div><label class="mute">Or choose manually</label><select onchange="cur=this.value||null;score=0;recite()"><option value="">Select…</option>'+D.students.map(s=>'<option'+(s==cur?" selected":"")+'>'+esc(s)+'</option>').join("")+'</select></div>'+
+(cur?'<div class="card"><h3>Score the recitation</h3><label class="mute">Topic</label><select id="top">'+CON.map(c=>'<option>'+c+'</option>').join("")+'</select><div class="sc">'+LAB.map((l,i)=>'<button class="t'+(i+1)+(score==i+1?" sel":"")+'" onclick="score='+(i+1)+';recite()">'+(i+1)+'<br><small>'+l+'</small></button>').join("")+'</div><input id="nt" placeholder="Quick note (optional)"><button class="go" style="width:100%" onclick="logIt()">Save recitation</button></div>':"")}
+function logIt(){if(!score){alert("Choose a score first.");return}
+D.logs.push({d:new Date().toISOString().slice(0,10),s:cur,c:$("top").value,n:score,m:$("nt").value});save();cur=null;score=0;recite()}
+function progress(){
+if(!D.students.length){$("v").innerHTML='<div class="card">No students yet.</div>';return}
+let h='<div class="card"><h3>Mastery map</h3><p class="mute">Average score per topic. Red cells need re-teaching.</p><div class="wrap"><table><tr><th>Student</th>'+CON.map(c=>'<th>'+c+'</th>').join("")+'<th>Total</th></tr>';
+D.students.forEach(s=>{h+='<tr><td>'+esc(s)+'</td>';CON.forEach(c=>{const x=D.logs.filter(l=>l.s==s&&l.c==c);if(!x.length){h+='<td class="mute">–</td>';return}const a=x.reduce((p,l)=>p+l.n,0)/x.length;h+='<td class="t'+Math.max(1,Math.round(a))+'">'+a.toFixed(1)+'</td>'});h+='<td>'+cnt(s)+'</td></tr>'});
+h+='</table></div></div>';
+const low=D.students.filter(s=>{const x=D.logs.filter(l=>l.s==s);return x.length&&x.reduce((p,l)=>p+l.n,0)/x.length<2.2});
+h+='<div class="card"><h3>Needs a check-in</h3>'+(low.length?low.map(esc).join(", "):'<span class="mute">No one flagged yet.</span>')+'</div>';
+h+='<div class="card"><h3>Recent notes</h3>'+(D.logs.slice(-8).reverse().map(l=>'<div>'+esc(l.s)+' · '+l.c+' · <b>'+l.n+'/4</b> <span class="mute">'+esc(l.m||"")+'</span></div>').join("")||'<span class="mute">Nothing yet.</span>')+'</div>';
+$("v").innerHTML=h}
+tab(D.students.length?0:2);
+</script></body></html>
